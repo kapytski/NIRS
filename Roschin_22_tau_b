@@ -1,0 +1,46 @@
+tau.b<-function(x,m=1000){
+  ct<-table(x[,1],x[,2])
+  col.sums<-apply(ct,2,sum)
+  n<-sum(col.sums)
+  c<-ncol(ct)
+
+  delta.quick.comp<-function(x) {
+    1- (sum(apply(x,1,function(x) x^2/col.sums))-c)/(n-c)
+  }
+
+  get.delta<-function(i){
+    delta.quick.comp(table(x[,1],sample(x[,2],n)))
+  }
+
+  result<-sapply(1:m,get.delta)
+  mu<-mean(result)
+  sigma.sq<-var(result)
+  skew <-(1/m*sum(result^3)-3*mu*sigma.sq-mu^3)/(sqrt(sigma.sq))^3
+
+  f<-function(y){
+    
+    if(skew==0) return(1/sqrt(2*pi)*exp(-y^2/2))
+    if(skew<0)
+    {
+      res<-ifelse(y<(-2/skew),
+             try((-2/skew)^(4/skew^2)/gamma(4/skew^2)*(-(2+y*skew)/skew)^((4-skew^2)/skew^2)*exp(-2*(2+y*skew)/skew^2)),
+             1/sqrt(2*pi)*exp(-y^2/2))
+             
+    }
+    if(skew>0)
+    {
+      res<-ifelse(y>(-2/skew),
+                   res<-try((2/skew)^(4/skew^2)/gamma(4/skew^2)*((2+y*skew)/skew)^((4-skew^2)/skew^2)*exp(-2*(2+y*skew)/skew^2)),
+                  1/sqrt(2*pi)*exp(-y^2/2))
+    }
+    if((class(res)=="try-error")|(is.nan(res))) {return(1/sqrt(2*pi)*exp(-y^2/2))}
+    return(res)
+  }
+  delta_0<-delta.quick.comp(ct)
+  tau<-1-(n-c)*delta_0/(n-sum(apply(ct,1,sum)^2/n))
+  T_0<-(delta_0-mu)/(sqrt(sigma.sq))
+  ifelse(skew<=0,{lower<--Inf;upper<-T_0},{lower<-T_0;upper<-Inf})
+  p.value<-integrate(Vectorize(f),lower=lower,upper = upper,stop.on.error=F)$value
+  p.value<-ifelse(p.value<=0.5,p.value*2,1)
+  return(c(tau=tau,delta_0=delta_0,mu=mu,sigma.2=sigma.sq,skew=skew,p.value=p.value))
+}
