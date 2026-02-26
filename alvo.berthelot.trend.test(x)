@@ -41,3 +41,4 @@ alvo.proportions.trend.test<-function(x,alternative="increasing")
   p<-pnorm(s,lower.tail = switch(alternative,"increasing"=F,"decreasing"=T))
   return(c(s=round(s,3),p=round(p,4)))
 }
+
